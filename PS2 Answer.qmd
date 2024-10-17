@@ -1,0 +1,18 @@
+---
+title: "Problem Set 2 Answer"
+format: pdf
+---
+1. “This submission is my work alone and complies with the 30538 integrity policy.” Add your initials to indicate your agreement: **_HX_**
+2. “I have uploaded the names of anyone I worked with on the problem set here” **_HX_** (2 point)
+3. Late coins used this pset: **_0_** Late coins left after submission: **_4_** 4. Knit your ps2.qmd to a pdf named ps2.pdf.
+• The PDF should not be more than 25 pages. Use head() and re-size figures when appropriate.
+5. Push ps2.qmd and ps2.pdf to your github repo. It is fine to use Github Desktop. 6. Submit ps2.pdf via Gradescope (8 points)
+7. Tag your submission in Gradescope
+
+```{python}
+import pandas as pd
+import altair as alt
+alt.renderers.enable('png')
+```
+
+## Data Cleaning continued
