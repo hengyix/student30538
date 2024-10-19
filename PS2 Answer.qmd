@@ -211,7 +211,7 @@ Under the new repayment rates, the change in revenue should have been about appr
 
 ***Q5***
 ```{python}
-# Again use the dataframe aggregate by month and year
+# Again use the dataframe aggregated by month and year
 # We already have total tickets for each month-year in the previous question
 # Now we only need to count paid tickets
 df_paid = df_unified[df_unified['ticket_queue'] == 'Paid']
@@ -255,6 +255,8 @@ df_Q6 = df_Q6[df_Q6['issue_date'].dt.year < 2012]
 # Calculate repayment rates
 grouped_code = df_Q6.groupby('violation_code')
 df_code_count = grouped_code.size().reset_index(name='total_tickets')
+# Those never paid are ignored here, they are missed in filter and merge
+# Never paid tickets are of no relevance
 df_Q6_paid = df_Q6[df_Q6['ticket_queue'] == 'Paid']
 grouped_code_paid = df_Q6_paid.groupby('violation_code')
 df_code_count_paid = grouped_code_paid.size().reset_index(name='paid_tickets')
@@ -290,3 +292,104 @@ chart_3
 
 The plot supports the argument by providing a contrast among different violation codes. To increase revenue efficiently, we need to identify points that are positioned both high on the y-axis, indicating higher repayment rates, and far to the right on the x-axis, representing a larger number of tickets issued. 
 In this plot, we could find 0964040B, 0964090E and 0964190 might be the three best choices. 
+\newpage
+
+## Headlines and sub-messages
+***Q1***
+```{python}
+grouped_description = df.groupby('violation_description')
+
+# Description and repayment rate
+total_count = grouped_description.size().reset_index(name='total_tickets')
+
+df_paid = df[df['ticket_queue'] == 'Paid'].copy()
+grouped_des_paid = df_paid.groupby('violation_description')
+paid_count = grouped_des_paid.size().reset_index(name='paid_tickets')
+
+# Those left out in df_paid are violation never paid
+all_violations = df['violation_description'].unique()
+paid_violations = df_paid['violation_description'].unique()
+unpaid_violations = [item for item in all_violations if item not in paid_violations]
+# Fill in with 0 paid tickets for these three types
+unpaid_dict = {
+    'violation_description': unpaid_violations, 
+    'paid_tickets': [0, 0, 0]
+    }
+unpaid_df = pd.DataFrame(unpaid_dict)
+paid_count = pd.concat([paid_count, unpaid_df], ignore_index=True)
+
+description_payment = pd.merge(
+    total_count, paid_count, 
+    on='violation_description'
+    )
+description_payment['repayment_rates'] = description_payment['paid_tickets'] / \
+                                         description_payment['total_tickets']
+
+# Description and average fine amount
+description_price = grouped_description['fine_level1_amount'].mean()
+description_price = description_price.reset_index(name='avg_price')
+
+description_summary = pd.merge(description_payment, description_price)
+
+# Sort by frequency and print most common 5
+Q_3_1 = description_summary.sort_values('total_tickets', ascending=False)
+Q_3_1 = Q_3_1[['violation_description', 'repayment_rates', 'avg_price']]
+print(Q_3_1.head(5))
+```
+
+***Q2***
+```{python}
+# Filter out types more than 100 times 
+Q_3_2 = description_summary[description_summary['total_tickets'] > 99]
+
+# Exclude the extreme value with high fine amount
+print(Q_3_2.sort_values('avg_price', ascending=False)[0: 5])
+print('So we need to exclude NO CITY STICKER VEHICLE OVER 16,000 LBS.')
+Q_3_2 = Q_3_2[Q_3_2['violation_description'] != 'NO CITY STICKER VEHICLE OVER 16,000 LBS.']
+
+# Scatter plot
+chart_4 = alt.Chart(Q_3_2).mark_point().encode(
+    alt.X('avg_price:Q', title='Average Fine Amount'),
+    alt.Y('repayment_rates:Q', title='Repayment Rates')
+).properties(
+    title='Average Fine Amount Versus Repayment Rates'
+)
+
+chart_4
+```
+```{python}
+chart_5 = alt.Chart(Q_3_2).mark_bar().encode(
+    alt.X(
+        'avg_price:Q', 
+        title='Average Fine Amount', 
+        bin=alt.BinParams(maxbins=20)
+        ),
+    alt.Y(
+        'repayment_rates:Q', 
+        title='Repayment Rates', 
+        bin=alt.BinParams(maxbins=20)
+        ),
+    alt.Color('count()')
+).properties(
+    title='Average Fine Amount Versus Repayment Rates'
+)
+
+chart_5
+```
+```{python}
+chart_6 = alt.Chart(Q_3_2).mark_boxplot().encode(
+    alt.X(
+        'avg_price:Q', 
+        title='Average Fine Amount', 
+        bin=alt.BinParams(maxbins=20)
+        ),
+    alt.Y(
+        'repayment_rates:Q', 
+        title='Repayment Rates'
+        )
+).properties(
+    title='Average Fine Amount Versus Repayment Rates'
+)
+
+chart_6 
+```
