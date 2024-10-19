@@ -393,3 +393,13 @@ chart_6 = alt.Chart(Q_3_2).mark_boxplot().encode(
 
 chart_6 
 ```
+
+```{python}
+alt.Chart(Q_3_2).mark_circle().encode(
+    alt.X('avg_price:Q', title='Average Fine Amount', bin=alt.BinParams(maxbins=20)),alt.Y('repayment_rates:Q', title='Repayment Rates', bin=alt.BinParams(maxbins=20)),
+    alt.Size('count()')
+).properties(
+    title='Average Fine Amount Versus Repayment Rates'
+)
+
+```
