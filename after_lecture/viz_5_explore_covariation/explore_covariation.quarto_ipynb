@@ -1,0 +1,617 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "---\n",
+        "title: \"Visualization (Exploring Co-variation)\"\n",
+        "author: \"Peter Ganong and Maggie Shi\"\n",
+        "date: today\n",
+        "date-format: long\n",
+        "format: \n",
+        "    html:\n",
+        "        echo: true\n",
+        "        code: true\n",
+        "        toc: true\n",
+        "        output: true\n",
+        "engine: jupyter\n",
+        "---"
+      ],
+      "id": "cb4ad3bc"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {
+        "message": false
+      },
+      "source": [
+        "#| echo: false\n",
+        "#| warning: false\n",
+        "import altair as alt\n",
+        "from vega_datasets import data\n",
+        "from palmerpenguins import load_penguins\n",
+        "penguins = load_penguins()\n",
+        "from plotnine import *\n",
+        "from plotnine.data import diamonds, mpg\n",
+        "import pandas as pd\n",
+        "import numpy as np\n",
+        "import matplotlib.pyplot as plt\n",
+        "import matplotlib.image as mpimg\n",
+        "alt.data_transformers.disable_max_rows() # Needed because len(df) > 5000"
+      ],
+      "id": "e5588a92",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Table of contents\n",
+        "1. Categorical variable and a continuous variable\n",
+        "2. Two categorical variables\n",
+        "3. Two continuous variables\n",
+        "4. Graphics for production\n",
+        "\n",
+        "\n",
+        "\n",
+        "# Categorical variable and continuous variable\n",
+        "<!-- source material (lecture 1, slides 33-36) -->\n",
+        "\n",
+        "<!-- source: Lecture 5, slides 45-65)-->\n"
+      ],
+      "id": "8bc468d1"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "from palmerpenguins import load_penguins\n",
+        "penguins = load_penguins()\n",
+        "display(penguins)"
+      ],
+      "id": "6a23a8cc",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## numeric & categorical: box plot\n",
+        "\n",
+        "![](pictures/EDA-boxplot.png)\n",
+        "\n",
+        "## numeric & categorical: `mark_boxplot()` "
+      ],
+      "id": "1fe86e12"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "alt.Chart(penguins).mark_boxplot().encode(\n",
+        "    x=alt.X('species:N', title=\"Species\"), \n",
+        "    y=alt.Y('body_mass_g:Q', title=\"Body Mass (g)\"),\n",
+        ").properties(\n",
+        "    width=400,\n",
+        "    height=300\n",
+        ")"
+      ],
+      "id": "4038ee0a",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "Discussion question: what do you notice from this graph? \n",
+        "\n",
+        "\n",
+        "## numeric & categorical: `transform_density()` "
+      ],
+      "id": "e49ec313"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "alt.Chart(penguins).transform_density(\n",
+        "    'body_mass_g',\n",
+        "        groupby=['species'], \n",
+        "        as_=['body_mass_g', 'density']\n",
+        "    ).mark_line().encode(\n",
+        "        alt.X('body_mass_g:Q'),\n",
+        "        alt.Y('density:Q', stack=None), \n",
+        "        alt.Color('species:N')\n",
+        "    ).properties(width=400,height=300)"
+      ],
+      "id": "5776313b",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## numeric & categorical: `transform_density()` \n",
+        "\n",
+        "Discussion q -- What if we required the x-axis range to include zero? Would that improve or reduce clarity? How come? "
+      ],
+      "id": "192ffce7"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "alt.Chart(penguins).transform_density(\n",
+        "    'body_mass_g',\n",
+        "        groupby=['species'],  \n",
+        "        as_=['body_mass_g', 'density']\n",
+        "    ).mark_line().encode(\n",
+        "        alt.X('body_mass_g:Q', scale=alt.Scale(zero=True)),\n",
+        "        alt.Y('density:Q', stack=None), \n",
+        "        alt.Color('species:N')\n",
+        "    ).properties(width=400,height=300)"
+      ],
+      "id": "0bb9cd18",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## numeric & categorical: `transform_density()` filled in\n",
+        "\n",
+        "`opacity=0.3` makes no difference in content; maybe a bit more elegant"
+      ],
+      "id": "f2638846"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "alt.Chart(penguins).transform_density(\n",
+        "    'body_mass_g',\n",
+        "        groupby=['species'],  # Group by species for different density curves\n",
+        "        as_=['body_mass_g', 'density']\n",
+        "    ).mark_area(opacity=0.3).encode(\n",
+        "        alt.X('body_mass_g:Q'),\n",
+        "        alt.Y('density:Q', stack=None), \n",
+        "        alt.Color('species:N')\n",
+        "    ).properties(width=400,height=300)"
+      ],
+      "id": "270cafa1",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "# Two categorical variables\n",
+        "\n",
+        "## Question: How is cut related to color? 2 categorical vars"
+      ],
+      "id": "84c7cb03"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| warning: false\n",
+        "diamonds_grouped = diamonds.groupby(['color','cut']).size().reset_index().rename(columns={0:'N'})\n",
+        "diamonds_grouped"
+      ],
+      "id": "3a010370",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Question: How is cut related to color? 2 categorical vars"
+      ],
+      "id": "5492261e"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "alt.Chart(diamonds_grouped).mark_circle().encode(\n",
+        "    x = 'color:N',\n",
+        "    y = 'cut:N',\n",
+        "    size='N:Q')"
+      ],
+      "id": "3d14c687",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Question: How is cut related to color? 2 categorical vars"
+      ],
+      "id": "f7da70a1"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "alt.Chart(diamonds_grouped).mark_rect().encode(\n",
+        "    x = 'color:N',\n",
+        "    y = 'cut:N',\n",
+        "    color='N:Q')"
+      ],
+      "id": "6694b8b7",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "Discussion question: what diamond types are most common?\n",
+        "\n",
+        "\n",
+        "\n",
+        "# Two continuous variables\n",
+        "\n",
+        "## Two continuous variables: roadmap\n",
+        "\n",
+        "* `movies` ratings from Rotten Tomatoes and IMDB \n",
+        "* `diamonds`: `carat` vs `price`\n",
+        "\n",
+        "## movies dataset"
+      ],
+      "id": "9946c914"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "movies_url = 'https://cdn.jsdelivr.net/npm/vega-datasets@1/data/movies.json'"
+      ],
+      "id": "44e75243",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| eval: false\n",
+        "movies = pd.read_json(movies_url)"
+      ],
+      "id": "6ddd7b17",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "#| echo: false\n",
+        "movies = pd.read_json('data/movies.json')"
+      ],
+      "id": "97402598",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Covariation: a first binned scatter plot"
+      ],
+      "id": "62ff33c7"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "alt.Chart(movies_url).mark_circle().encode(\n",
+        "    alt.X('Rotten_Tomatoes_Rating:Q', bin=alt.BinParams(maxbins=20)),\n",
+        "    alt.Y('IMDB_Rating:Q', bin=alt.BinParams(maxbins=20)),\n",
+        ")"
+      ],
+      "id": "be64c51d",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "Suffers from overplotting!\n",
+        "\n",
+        "\n",
+        "## use `alt.Size('count()')` to address overplotting"
+      ],
+      "id": "79046458"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "xy_size = alt.Chart(movies_url).mark_circle().encode(\n",
+        "    alt.X('Rotten_Tomatoes_Rating:Q', bin=alt.BinParams(maxbins=20)),\n",
+        "    alt.Y('IMDB_Rating:Q', bin=alt.BinParams(maxbins=20)),\n",
+        "    alt.Size('count()')\n",
+        ")\n",
+        "xy_size"
+      ],
+      "id": "6febb32f",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## use `alt.Color('count()')` to address overplotting"
+      ],
+      "id": "b4d5cf5f"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "xy_color = alt.Chart(movies_url).mark_bar().encode(\n",
+        "    alt.X('Rotten_Tomatoes_Rating:Q', bin=alt.BinParams(maxbins=20)),\n",
+        "    alt.Y('IMDB_Rating:Q', bin=alt.BinParams(maxbins=20)),\n",
+        "    alt.Color('count()')\n",
+        ") \n",
+        "xy_color"
+      ],
+      "id": "64a5955b",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Discussion question"
+      ],
+      "id": "6f0c96b0"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "xy_size | xy_color"
+      ],
+      "id": "a625f4bd",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "Compare the *size* and *color*-based 2D histograms above. Which encoding do you think should be preferred? Why?\n",
+        "\n",
+        "\n",
+        "\n",
+        "## Question: How is carat related to price? 2 continuous vars"
+      ],
+      "id": "92caffd5"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "alt.Chart(diamonds).mark_point().encode(\n",
+        "    x = 'carat:Q',\n",
+        "    y = 'price:Q'\n",
+        ")"
+      ],
+      "id": "26307e2c",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Question: How is carat related to price? 2 continuous vars"
+      ],
+      "id": "c90a66d3"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "alt.Chart(diamonds).mark_rect().encode(\n",
+        "    alt.X('carat:Q', bin=alt.Bin(maxbins=70)), \n",
+        "    alt.Y('price:Q', bin=alt.Bin(maxbins=70)),\n",
+        "    alt.Color('count()', scale=alt.Scale(scheme='blues')))"
+      ],
+      "id": "09292fe1",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Question: How is carat related to price? 2 continuous vars"
+      ],
+      "id": "7b35a34b"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "alt.Chart(diamonds).mark_boxplot().encode(\n",
+        "    alt.X('carat:Q', bin=alt.Bin(maxbins=10)), \n",
+        "    alt.Y('price:Q'))"
+      ],
+      "id": "eb92a660",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "## Question: How is carat related to price? 2 continuous vars\n"
+      ],
+      "id": "17d820e2"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "df = diamonds\n",
+        "df['carat_bin'] = pd.qcut(df['carat'], q=20, labels=(np.arange(1, 21, 1)))\n",
+        "\n",
+        "df = df.groupby('carat_bin').agg(\n",
+        "    carat = ('carat', 'mean'),\n",
+        "    price = ('price', 'mean')).reset_index()\n",
+        "\n",
+        "alt.Chart(df).mark_point().encode(\n",
+        "   x = 'carat:Q',\n",
+        "   y = 'price:Q'\n",
+        ")"
+      ],
+      "id": "ec5ead74",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "* What it does:\n",
+        "    1. Computes bins using quantiles of x\n",
+        "    1. Computes means of y within each bin\n",
+        "    \n",
+        "* Called `binscatter` in stata and `binsreg` in R. Doesn't exist yet for Altair, but easy to code up yourself\n",
+        "\n",
+        "## Discussion question -- \"How is carat related to price?\" \n",
+        "\n",
+        "Review the `mark_rect()`, `mark_boxplot()`, and `binscatter` plots\n",
+        "\n",
+        "* headline? (aka the main message)\n",
+        "* sub-messages? (other information one can learn beyond the main message)\n",
+        "\n",
+        "\n",
+        "## Summary: Exploring covariation\n",
+        "\n",
+        "\n",
+        "\n",
+        "| Scenario | Functions |\n",
+        "| ------- | --------- |\n",
+        "| Categorical and continuous variable | `mark_boxplot()` |\n",
+        "| | `transform_density()` |\n",
+        "| |     |\n",
+        "| Two categorical variables | `size` |\n",
+        "| | `color` |\n",
+        "| |       | \n",
+        "| Two continuous variables | `alt.Size('count()')` |\n",
+        "| |  `alt.Color('count()')` |\n",
+        "| | `mark_boxplot()` |\n",
+        "| | binscatter |\n",
+        "\n",
+        "\n",
+        "<!--(lecture 1 slide 47 + lecture 6, slide 26-28 w/solution)-->\n",
+        "\n",
+        "## Do-pair-share\n",
+        "\n",
+        "We are now going to transition from making plots to teach **ourselves** to making plots for an audience.\n",
+        "\n",
+        "Are penguins getting heavier (`body_mass_g`) over time? \n",
+        "\n",
+        "Bonus: what is the headline of your plot and what are the sub-messages?\n",
+        "\n",
+        "<!-- ZZZ delete before posting -->\n",
+        "## Do-pair-share solution I\n"
+      ],
+      "id": "5b34943f"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "alt.Chart(penguins).mark_bar().encode(\n",
+        "  alt.Y('average(body_mass_g):Q',  scale=alt.Scale(zero=False)),\n",
+        "  alt.X('year:N'),\n",
+        "  alt.Color('year:N')\n",
+        ")"
+      ],
+      "id": "1f09f29d",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "This does answers the question, albeit in the most simple/boring way possible.\n",
+        "\n",
+        "## Do-pair-share solution II"
+      ],
+      "id": "6d235638"
+    },
+    {
+      "cell_type": "code",
+      "metadata": {},
+      "source": [
+        "alt.Chart(penguins).transform_density(\n",
+        "   'body_mass_g',\n",
+        "    groupby=['year'],\n",
+        "    as_= ['body_mass_g', 'density']\n",
+        ").mark_line().encode(\n",
+        "    x = 'body_mass_g:Q',\n",
+        "    y = 'density:Q',\n",
+        "    color='year:N'\n",
+        ")"
+      ],
+      "id": "30026f09",
+      "execution_count": null,
+      "outputs": []
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {},
+      "source": [
+        "* Headline: 2007 is lightest, 2008 is heaviest\n",
+        "\n",
+        "* Sub-messages\n",
+        "\n",
+        "    1. Similar shares of penguins above 5,000 grams in 2008 and 2009\n",
+        "    1. Average weight is higher in 2008 because 2009 has more lightweight penguins\n",
+        "\n",
+        "<!-- ZZZ end deletion before posting -->\n",
+        "\n",
+        "## Meta comment: iterating on plot design\n",
+        "\n",
+        "\"Make dozens of plots\" -- Quoctrung Bui, former 30535 guest lecturer and former Harris data viz instructor\n",
+        "\n",
+        "What does he mean?\n",
+        "\n",
+        "* The first plot you make will never be the one you should show\n",
+        "* As a rule of thumb, you should try out at least three different plotting concepts (`mark`s)\n",
+        "* Within each concept, you will need to try out several different encodings\n"
+      ],
+      "id": "ac42cf66"
+    }
+  ],
+  "metadata": {
+    "kernelspec": {
+      "name": "python3",
+      "language": "python",
+      "display_name": "Python 3 (ipykernel)",
+      "path": "/Users/hengyix/anaconda3/share/jupyter/kernels/python3"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 5
+}

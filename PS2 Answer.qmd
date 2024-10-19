@@ -10,9 +10,283 @@ format: pdf
 7. Tag your submission in Gradescope
 
 ```{python}
+#| warning: false
 import pandas as pd
 import altair as alt
+import os
 alt.renderers.enable('png')
+
+# Read in the csv file
+# Warning message is suppressed for output clarity.
+data = pd.read_csv(
+    'problem_sets/ps2/data/parking_tickets_one_percent.csv', 
+    index_col=[0]
+    )
+df = pd.DataFrame(data)
 ```
 
 ## Data Cleaning continued
+***Q1***
+```{python}
+# Define the function to count NAs
+def count_na(df):
+    labels = []  
+    na_counts = [] 
+    for label, content in df.items():
+        count = content.isna().sum()
+        labels.append(label)
+        na_counts.append(count)
+    result_dict = {'Variable': labels, 'NA Count': na_counts}
+    result_df = pd.DataFrame.from_dict(result_dict)
+    return result_df
+
+
+# Conduct a test
+df_test = pd.DataFrame({
+    'A': [1, 2, None, None],
+    'B': [1, 2, 3, 4],
+    'C': [1, 'Apple', 3, None]
+})
+print(df_test, '\n')
+print(count_na(df_test), '\n')
+
+print('So the function works.\nApplying to our dataset:', '\n')
+print(count_na(df))
+```
+
+***Q2***
+<br>
+
+The zipcode, notice_level and hearing_disposition are missing much more frequently than others, probably because of the way data was collected. According to the dictionary, zipcode is the ZIP code associated with the vehicle registration. If the registration information is unclear or incomplete, this field might be left empty. notice_level describes the type of notice the city has sent a motorist. If no notice was sent, this field would be blank. Similarly, hearing_disposition represents the outcome of a hearing. If the ticket was not contested, this field would be blank. <br>
+
+In conclusion, these three variables contain more NAs than average because of their data entry styles. These fields are filled only if certain conditions are met, such as ticket got contested. Other variables that capture essential information, such as ticket numbers and issue dates, are routinely collected with each ticket issued.
+Thus, they are more likely to be NA than others. <br>
+
+***Q3***
+```{python}
+df_Q3 = df[df['violation_description'].str.contains('NO CITY STICKER', na=False)]
+print(df_Q3['violation_code'].unique()) # Ordered by first apperance in dataset
+```
+
+By inspection, we know that 0976170 and 0964125C are extremely rare cases in the dataset. Here we ignore these two values. 
+Old violation code: 0964125; New violation code: 0964125B.
+\newpage
+***Q4***<br>
+
+Accoding to the articles, citations for not having a required vehicle sticker rose from $120 to $200. So we have the cost under old violation code: $120; under new code: $200. In the dataset, we refer to the variable of fine_level1_amount.
+```{python}
+# For '0964125' 
+print(df[df['violation_code'] == '0964125']['fine_level1_amount'].unique())
+```
+```{python}
+# For '0964125B' 
+print(df[df['violation_code'] == '0964125B']['fine_level1_amount'].unique())
+# '0964125C' ignored as instructed.
+```
+The result above aligns with the article. To be more specific, the cost of an initial offense under 0964125 was $120, and the cost of an initial offense under 0964125B was $200.
+
+## Revenue increase from 'missing city sticker' tickets
+***Q1***
+```{python}
+# Unify the codes with 000
+df_unified = df.copy()
+df_unified =  df_unified.replace('0964125', '000')
+df_unified =  df_unified.replace('0964125B', '000')
+df_unified = df_unified[df_unified['violation_code'] == '000']
+# Extract year-month and count
+df_unified['issue_date'] = pd.to_datetime(
+df_unified['issue_date'])
+df_unified['issue_y_m'] = df_unified['issue_date'].dt.strftime('%Y-%m')
+grouped_date = df_unified.groupby('issue_y_m')
+Q1_count = grouped_date.size().reset_index(name='count')
+print(Q1_count.head(10))
+
+# Aggregate by year and month
+chart_1 = alt.Chart(Q1_count).mark_area(
+    interpolate='step-after',
+    line=True
+).encode(
+    alt.X(
+        'issue_y_m:T', 
+        title='Time',
+        axis=alt.Axis(format='%Y-%m')
+        ), 
+    alt.Y(
+        'count:Q', 
+        title='Count'
+        )
+).properties(
+    width=500,
+    title='Missing City Sticker Tickets by Month'
+)
+
+chart_1
+```
+
+***Q2***
+```{python}
+# Find the date of cost increase
+df_new_code = df_unified[df_unified['fine_level1_amount'] == 200]
+print(df_new_code['issue_date'].iloc[0])
+print('So we know the date of cost increase was 2012-02-25.')
+cost_increase_date = '2012-02-25'
+
+# Add a vertical line at 2012-02-25
+rule = alt.Chart(
+    pd.DataFrame(
+        {
+            'cost_increase_date': [cost_increase_date], 
+            'label': ['Cost Increase']
+            }
+        )
+    ).mark_rule(
+    color='red',
+    strokeDash=[8, 4]
+).encode(
+    x='cost_increase_date:T',
+    tooltip=['label']
+)
+
+# Label for cost increase
+text = alt.Chart(
+    pd.DataFrame(
+        {
+            'cost_increase_date': [cost_increase_date], 
+            'label': ['2012-02-25']
+            }
+        )
+    ).mark_text(
+    align='left',
+    baseline='bottom',
+    dx=-20,
+    dy=150,
+    color='red'
+).encode(
+    x='cost_increase_date:T',
+    text='label'
+)
+
+chart_1 + rule + text
+```
+[Help page](https://altair-viz.github.io/user_guide/marks/rule.html#)
+(https://altair-viz.github.io/user_guide/marks/rule.html#) <br>
+
+***Q3***
+```{python}
+# Filter out data in 2011
+df_2011 = df_unified[df_unified['issue_date'].dt.year == 2011]
+tickets_2011 = df_2011.shape[0]
+print(f'{tickets_2011} no city sticker tickets were issued in 2011.')
+# We assume the same amount later on
+revenue_increase = tickets_2011 * (200 - 120) * 100 # Dataset is one percent
+print(revenue_increase)
+```
+So they should have expected $15464000 of revenue increase, which is approximately 15.5 million US dollars per year.
+\newpage
+***Q4***
+```{python}
+# Before price increased
+df_before_increase = df_unified[df_unified['fine_level1_amount'] == 120]
+df_before_paid = df_before_increase[df_before_increase['ticket_queue'] == 'Paid']
+paid_rate_before = df_before_paid.shape[0] / df_before_increase.shape[0]
+print(f'Before increase, the repayment rate was {paid_rate_before}.')
+
+# Filter out data in 2013
+df_2013 = df_unified[df_unified['issue_date'].dt.year == 2013]
+df_2013_paid = df_2013[df_2013['ticket_queue'] == 'Paid']
+paid_rate_2013 = df_2013_paid.shape[0] / df_2013.shape[0]
+print(f'In the calendar year after increase, repayment rate was {paid_rate_2013}.')
+
+print('So we see a drop in repayment rate in tickets after the price was increased.')
+print('From around 54% to 41%.')
+
+# Under repayment rate of 41%
+# We still assume 1933 tickets per year
+revenue_increase_rate = (
+    tickets_2011 * paid_rate_2013 * 200 - tickets_2011 * paid_rate_before * 120
+    ) * 100 
+print(revenue_increase_rate)
+```
+Under the new repayment rates, the change in revenue should have been about approximately 3.1 million US dollars per year.
+
+***Q5***
+```{python}
+# Again use the dataframe aggregate by month and year
+# We already have total tickets for each month-year in the previous question
+# Now we only need to count paid tickets
+df_paid = df_unified[df_unified['ticket_queue'] == 'Paid']
+group_paid = df_paid.groupby('issue_y_m')
+df_paid_count = group_paid.size().reset_index(name='count_paid')
+
+# Combine with the count of total tickets
+Q5_count = pd.merge(df_paid_count, Q1_count)
+# Calculate repayment rates in a new column
+Q5_count['repayment_rate'] = Q5_count['count_paid'] / Q5_count['count']
+print(Q5_count.head(10)) # Ready for plotting
+
+chart2 = alt.Chart(Q5_count).mark_line().encode(
+    alt.X('issue_y_m:T', title='Time', axis=alt.Axis(format='%Y-%m')),
+    alt.Y('repayment_rate:Q', title='Repayment Rates')
+).properties(
+    width=500,
+    title='Repayment Rates of No City Sticker Tickets by Month'
+)
+
+# The verticle line and annotation have been set in Question 2.
+chart2 + rule + text
+```
+
+From the plot, we can see a downward trend in repayment rates of no city sticker tickets over time, after the new policy was introduced. The repayment rates kept fluctuating, but after the price went up, repayment rates were in general significantly lower than before. The average level under the new policy was apparently below that under the old code. Moreover, toward the end of our dataset, there was an ongoing sharp decline in repayment rates. The rates dropped to extremely low by 2018.
+<br>
+
+This indicates the need to balance repayment rates and penalty amounts, in order to boost the government revenue. <br>
+
+***Q6***
+```{python}
+# 000 represents no city sticker
+df_Q6 = df.copy()
+df_Q6 = df_Q6.replace('0964125', '000')
+df_Q6 = df_Q6.replace('0964125B', '000')
+
+# Filter out records before 2012
+df_Q6['issue_date'] = pd.to_datetime(df_Q6['issue_date'])
+df_Q6 = df_Q6[df_Q6['issue_date'].dt.year < 2012]
+
+# Calculate repayment rates
+grouped_code = df_Q6.groupby('violation_code')
+df_code_count = grouped_code.size().reset_index(name='total_tickets')
+df_Q6_paid = df_Q6[df_Q6['ticket_queue'] == 'Paid']
+grouped_code_paid = df_Q6_paid.groupby('violation_code')
+df_code_count_paid = grouped_code_paid.size().reset_index(name='paid_tickets')
+
+Q6_count = pd.merge(df_code_count, df_code_count_paid)
+Q6_count['repayment_rates'] = Q6_count['paid_tickets'] / Q6_count['total_tickets']
+# We have both ticket counts and repayment rates 
+
+# Explore the dataset: tickets issued
+Q6_count = Q6_count.sort_values(by='total_tickets', ascending=False)
+print(Q6_count.head(15))
+```
+
+The suggested three violation types would be 0964190 ('EXPIRED METER OR OVERSTAY'), 0964040B ('STREET CLEANING'), and 0964090E ('RESIDENTIAL PERMIT PARKING'). <br>
+
+This is because we need to consider both total number of tickets and the repayment rates. Both need to be maximized to boost revenue effectively.
+From the dataframe Q6_count as shown above, we could tell that these three violation codes have relatively higher total_ticket counts and repayment rates.
+```{python}
+# To boost revenue, the amount of tickets should be large to make a difference.
+# By inspection, we set the bar of 5000 total tickets before 2012 here.
+Q6_count = Q6_count[Q6_count['total_tickets'] > 5000]
+
+chart_3 = alt.Chart(Q6_count).mark_point().encode(
+    alt.X('total_tickets:Q', title='Tickets Issued').scale(zero=False),
+    alt.Y('repayment_rates:Q', title='Repayment Rates').scale(zero=False),
+    color='violation_code:N').properties(
+    width=500,
+    title='Ticket Counts and Repayment Rates of Top Violation Types before Policy Change'
+)
+
+chart_3
+```
+
+The plot supports the argument by providing a contrast among different violation codes. To increase revenue efficiently, we need to identify points that are positioned both high on the y-axis, indicating higher repayment rates, and far to the right on the x-axis, representing a larger number of tickets issued. 
+In this plot, we could find 0964040B, 0964090E and 0964190 might be the three best choices. 
