@@ -442,3 +442,4 @@ print(df_diff[['violation_description', 'price_increase']])
 ```
 \newpage
 ***Q2***
+![Tree_Plot_1](/Users/hengyix/Documents/GitHub/student30538/Tree_Plot_1.jpg)
