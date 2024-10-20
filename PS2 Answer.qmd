@@ -441,5 +441,142 @@ print('Each ticket increase if unpaid: ')
 print(df_diff[['violation_description', 'price_increase']])
 ```
 \newpage
-***Q2***
-![Tree_Plot_1](/Users/hengyix/Documents/GitHub/student30538/Tree_Plot_1.jpg)
+***Q2*** <br>
+
+![Tree_Plot_1](Tree_Plot_1.jpg)
+If someone contests their ticket and is found not liable, we have notice_level = 'VIOL' and ticket_queue = 'Dismissed'.<br>
+
+***Q3***
+```{python}
+#| warning: false
+# Pick top 10 descriptions and name all others as Other
+Q_4_3 = Q_3_2.sort_values('total_tickets', ascending=False).copy()
+Q_4_3['violation_description'][10:] = 'Other'
+
+chart_a = alt.Chart(Q_4_3).mark_point().encode(
+    alt.X('avg_price:Q', title='Average Fine Amount'),
+    alt.Y('repayment_rates:Q', title='Repayment Rates'),
+    alt.Color('violation_description:N').scale(scheme='paired')
+).properties(
+    title='Average Fine Amount Versus Repayment Rates'
+)
+
+chart_a
+```
+```{python}
+# Common label and common color
+category_dict = {
+    "Parking": [
+        "20'OF CROSSWALK", "NO PARK IN PRIVATE LOT", "NO PARK IN PUBLIC LOT", 
+            "PARK OUTSIDE METERED SPACE", "PARK ALLEY", 
+        "DOUBLE PARKING OR STANDING", "DOUBLE PARKING OR STANDING", 
+            "DOUBLE PARKING OR STANDING", 
+        "PARK OR BLOCK ALLEY", "PARK/STAND ON BICYCLE PATH", 
+            "PARK OR STAND IN BUS/TAXI/CARRIAGE STAND",
+        "PARK OR STAND IN VIADUCT/UNDERPASS", "PARK OR STAND ON CITY PROPERTY", \
+            "PARK OR STAND ON CROSSWALK",
+        "PARK OR STAND ON PARKWAY", "PARK OR STAND ON SIDEWALK",\
+             "PARKING/STANDING PROHIBITED ANYTIME",
+        "WITHIN 15' OF FIRE HYDRANT", "RESIDENTIAL PERMIT PARKING",\
+             "INDUSTRIAL PERMIT PARKING", 
+        "CURB LOADING ZONE", "NO STANDING/PARKING TIME RESTRICTED", \
+            "PARK IN CITY LOT WHEN CLOSED", \
+                "SMOKED/TINTED WINDOWS PARKED/STANDING",
+        "WRONG DIRECTION OR 12'' FROM CURB"
+    ],
+    "Sticker and Registration": [
+        "NO CITY STICKER OR IMPROPER DISPLAY", \
+            "NO CITY STICKER VEHICLE UNDER/EQUAL TO 16,000 LBS.", \
+                "IMPROPER DISPLAY OF CITY STICKER", \
+                    "EXPIRED PLATE OR TEMPORARY  REGISTRATION", \
+            "REAR AND FRONT PLATE REQUIRED", \
+        "REAR PLATE REQUIRED MOTORCYCLE/TRAILER", 
+        "EXPIRED PLATES OR TEMPORARY REGISTRATION", \
+            "MISSING/NONCOMPLIANT FRONT AND/OR REAR PLATE", \
+                "NONCOMPLIANT PLATE(S)",
+                "EXPIRED PLATE OR TEMPORARY REGISTRATION"
+    ],
+    "Safe Driving and Traffic Rules": [
+        "ABANDONED VEH. FOR 7 DAYS OR INOPERABLE", \
+            "DOUBLE PARKING OR STANDING", "SAFETY BELTS REQUIRED", \
+                "STOP SIGN OR TRAFFIC SIGNAL", \
+                    "STAND, PARK, OR OTHER USE OF BUS LANE", \
+                        "3-7 AM SNOW ROUTE", "SNOW ROUTE: 2'' OF SNOW OR MORE", \
+            "SPECIAL EVENTS RESTRICTION", "STREET CLEANING", \
+                "STREET CLEANING OR SPECIAL EVENT", "RUSH HOUR PARKING"
+    ],
+    "Large Vehicle Restrictions": [
+        "TRUCK OR SEMI-TRAILER PROHIBITED", \
+            "TRUCK TRAILOR/SEMI/TRAILER PROHIBITED", \
+            "TRUCK,MOTOR HOME, BUS BUSINESS STREET", \
+                "TRUCK,RV,BUS, OR TAXI RESIDENTIAL STREET"
+    ],
+    "Vehicle Maintenance and Safety": [
+        "LAMPS BROKEN OR INOPERABLE", "REAR PLATE LIT AND LEGIBLE FOR 50'",\
+            "RED REAR LAMP REQUIRED VISIBLE 500'", \
+            "TWO HEAD LAMPS REQUIRED VISIBLE 1000'", \
+                "WINDOWS MISSING OR CRACKED BEYOND 6", \
+                    "HAZARDOUS DILAPIDATED VEHICLE", \
+                        "OBSTRUCTED OR IMPROPERLY TINTED WINDOWS", \
+                             "BURGLAR ALARM SOUNDING OVER 4 MINUTES",\
+                                "HAZARDOUS DILAPITATED VEHICLE"
+    ],
+    "Obstruction and Improper Use": [
+        "BLOCK ACCESS/ALLEY/DRIVEWAY/FIRELANE", \
+            "OBSTRUCT ROADWAY", \
+                "OUTSIDE DIAGONAL MARKINGS", \
+                    "PARK VEHICLE SOLE PURPOSE OF DISPLAYING FOR SALE", \
+                        "DISABLED CURB CUT", "DISABLED PARKING ZONE"
+    ],
+    "Payment and Meter Violations": [
+        "EXP. METER NON-CENTRAL BUSINESS DISTRICT", \
+            "EXPIRED METER CENTRAL BUSINESS DISTRICT", \
+                "EXPIRED METER OR OVERSTAY", \
+                    "NON PYMT/NON-COM VEH PARKED IN COM LOADING ZONE"
+    ]
+}
+
+reverse_dict = {violation: category for category, violations in \
+    category_dict.items() for violation in violations}
+
+Q_4_4 = Q_3_2.copy()
+Q_4_4['category'] = Q_4_4['violation_description'].map(reverse_dict)
+
+chart_b = alt.Chart(Q_4_4).mark_point().encode(
+    alt.X('avg_price:Q', title='Average Fine Amount'),
+    alt.Y('repayment_rates:Q', title='Repayment Rates'),
+    alt.Color('category:N').scale(scheme='accent')
+).properties(
+    title='Average Fine Amount Versus Repayment Rates'
+)
+
+
+
+chart_b
+```
+## Extra Credit
+```{python}
+#| warning: false
+code_description = df.groupby(
+    ['violation_code', 'violation_description']
+    ).size().reset_index(name='records')
+multi_code = code_description.groupby('violation_code').\
+    size().reset_index(name='descriptions')
+codes = multi_code['violation_code'][multi_code['descriptions'] > 1].to_list()
+code_description = \
+    code_description[code_description['violation_code'].isin(codes)]
+
+max_description = code_description.loc[
+    code_description.groupby('violation_code')['records'].idxmax(), 
+    ['violation_code', 'violation_description']
+].reset_index(drop=True)
+print('Codes with multiple descriptions: top description')
+print(max_description, '\n')
+
+# Find top three
+code_records = code_description.groupby('violation_code')\
+    .apply(lambda g: g['records'].sum())
+print(code_records)
+print('The three codes with most observations: 0964040B, 0976160A, 0976160B')
+
+```
