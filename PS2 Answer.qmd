@@ -248,9 +248,9 @@ df_Q6 = df.copy()
 df_Q6 = df_Q6.replace('0964125', '000')
 df_Q6 = df_Q6.replace('0964125B', '000')
 
-# Filter out records before 2012
+# Filter out records before policy change
 df_Q6['issue_date'] = pd.to_datetime(df_Q6['issue_date'])
-df_Q6 = df_Q6[df_Q6['issue_date'].dt.year < 2012]
+df_Q6 = df_Q6[df_Q6['issue_date'] < '2012-02-25']
 
 # Calculate repayment rates
 grouped_code = df_Q6.groupby('violation_code')
@@ -270,28 +270,28 @@ Q6_count = Q6_count.sort_values(by='total_tickets', ascending=False)
 print(Q6_count.head(15))
 ```
 
-The suggested three violation types would be 0964190 ('EXPIRED METER OR OVERSTAY'), 0964040B ('STREET CLEANING'), and 0964090E ('RESIDENTIAL PERMIT PARKING'). <br>
+The suggested three violation types would be 0964190 ('EXPIRED METER OR OVERSTAY'), 0964040B ('STREET CLEANING'), and 0976160F ('EXPIRED PLATES OR TEMPORARY REGISTRATION'). <br>
 
-This is because we need to consider both total number of tickets and the repayment rates. Both need to be maximized to boost revenue effectively.
-From the dataframe Q6_count as shown above, we could tell that these three violation codes have relatively higher total_ticket counts and repayment rates.
+This is because we need to seek for both high total number of tickets and high repayment rates. We use the multiplication of these two parameters as measure, which is paid_tickets. 
+From the dataframe Q6_count as shown above, we could tell that these three violation codes have relatively higher total_ticket counts and repayment rates. They have the most paid tickets in 2011.
 ```{python}
 # To boost revenue, the amount of tickets should be large to make a difference.
-# By inspection, we set the bar of 5000 total tickets before 2012 here.
+# By inspection, we set the bar of 5000 total tickets in 2011 here.
 Q6_count = Q6_count[Q6_count['total_tickets'] > 5000]
 
-chart_3 = alt.Chart(Q6_count).mark_point().encode(
+chart_3 = alt.Chart(Q6_count).mark_circle(size=200).encode(
     alt.X('total_tickets:Q', title='Tickets Issued').scale(zero=False),
     alt.Y('repayment_rates:Q', title='Repayment Rates').scale(zero=False),
     color='violation_code:N').properties(
     width=500,
-    title='Ticket Counts and Repayment Rates of Top Violation Types before Policy Change'
+    title='Ticket Counts and Repayment Rates of Top Violation Types in 2011'
 )
 
 chart_3
 ```
 
-The plot supports the argument by providing a contrast among different violation codes. To increase revenue efficiently, we need to identify points that are positioned both high on the y-axis, indicating higher repayment rates, and far to the right on the x-axis, representing a larger number of tickets issued. 
-In this plot, we could find 0964040B, 0964090E and 0964190 might be the three best choices. 
+The plot supports the argument by providing a contrast among different violation codes. The three dots we chose, 0964190, 0976160F, 0964040B, are positioned either high on the y-axis, indicating higher repayment rates, or far to the right on the x-axis, representing a larger number of tickets issued, or both. 
+In this plot, we could find 0964190, 0976160F, 0964040B might be the three best choices. 
 \newpage
 
 ## Headlines and sub-messages
@@ -357,6 +357,10 @@ chart_4 = alt.Chart(Q_3_2).mark_point().encode(
 
 chart_4
 ```
+Headline: In general, average fine amount and repayment rates are negatively correlated. As average fine amount goes up, repayment rates tend to decrease, among top violation types. <br>
+
+Submessages: Most top violation types are priced under $100 at the initial stage, with repayment rates ranging from 50% to 80%. The lowest repayment rate is around 20%, and the lowest average price is over $20. The highest repayment rate reaches about 85%, with an average fine around $50. And as average fine amount increases, the spread of repayment rates becomes more dispersed at first, and then more condensed.
+
 ```{python}
 chart_5 = alt.Chart(Q_3_2).mark_bar().encode(
     alt.X(
@@ -376,6 +380,10 @@ chart_5 = alt.Chart(Q_3_2).mark_bar().encode(
 
 chart_5
 ```
+Headline: Most of frequent violation types are priced between $20 and $80, with repayment rates ranging from 55% and 85%. <br>
+
+Submessages: Repayment rates tend to decrease with increase in average fine amount when we focus on most frequent violation types. Besides, as average penalty amount goes up, the range of repayment rates gets wider abd then narrower, finally concentrated at a more consistent yet lower level. 
+
 ```{python}
 chart_6 = alt.Chart(Q_3_2).mark_boxplot().encode(
     alt.X(
@@ -393,13 +401,44 @@ chart_6 = alt.Chart(Q_3_2).mark_boxplot().encode(
 
 chart_6 
 ```
+Headline: With the increase in average price, the spread of repayment rates widens and then narrows. <br>
 
+Submessages: There is a concave trend in the median of repaymemt rates as average fine amount goes up. Among top violation types, few records exist when the average price exceeds $160. And in general, repayment rates decrease when average fine amount increases. <br>
+
+***Q3***<br>
+
+The first plot, scatter plot, would be the best choice because it shows every single violation type, in a very direct and straightforward way. Readers can follow the dots and identify the genreal trend at first sight without additional information. They could easily tell that as average fine amount goes up, repayment ratea tend to decline. <br>
+
+By contrast, other two plots require some effort in understanding the meaning of squares and dots or some knowledge of statistical concepts such as quartile and bins.
+<br>
+
+## Understanding the structure of the data and summarizing it 
+***Q1***
 ```{python}
-alt.Chart(Q_3_2).mark_circle().encode(
-    alt.X('avg_price:Q', title='Average Fine Amount', bin=alt.BinParams(maxbins=20)),alt.Y('repayment_rates:Q', title='Repayment Rates', bin=alt.BinParams(maxbins=20)),
-    alt.Size('count()')
-).properties(
-    title='Average Fine Amount Versus Repayment Rates'
-)
+# Filter out records unpaid yet price not doubled
+df_unpaid = df[df['ticket_queue'] != 'Paid']
+df_undoubled = df_unpaid[
+    df_unpaid['fine_level2_amount'] != df_unpaid['fine_level1_amount'] * 2
+]
+print('This dataframe is not empty.')
+print('So this argument does not hold for all violations.')
 
+# Fetch violation types with at least 100 citations
+Q_4_1 = df_undoubled.groupby(
+    'violation_description'
+    ).size().reset_index(name='citation')
+type_undoubled = Q_4_1['violation_description'][Q_4_1['citation'] > 99].to_list()
+
+df_undoubled = df_undoubled[
+    df_undoubled['violation_description'].isin(type_undoubled)
+    ]
+
+df_diff = df_undoubled.groupby('violation_description')\
+    [['fine_level1_amount', 'fine_level2_amount']].mean().reset_index()
+df_diff['price_increase'] = \
+    df_diff['fine_level2_amount'] - df_diff['fine_level1_amount']
+print('Each ticket increase if unpaid: ')
+print(df_diff[['violation_description', 'price_increase']])
 ```
+\newpage
+***Q2***
